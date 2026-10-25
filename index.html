@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haven - Neighbor Check-In & Safety</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Glassmorphic elements */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* High contrast mode overrides */
+        .high-contrast body {
+            background: #000000 !important;
+            color: #ffffff !important;
+        }
+        .high-contrast .glass-panel,
+        .high-contrast .glass-card {
+            background: #000000 !important;
+            border: 3px solid #ffffff !important;
+            backdrop-filter: none !important;
+        }
+        .high-contrast button {
+            border: 3px solid #ffffff !important;
+        }
+        .high-contrast .text-slate-500,
+        .high-contrast .text-slate-600,
+        .high-contrast .text-slate-400 {
+            color: #ffffff !important;
+        }
+
+        /* Pulsing animation for main action */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 3s infinite ease-in-out;
+        }
+
+        /* Custom focus styles for high accessibility */
+        *:focus-visible {
+            outline: 4px solid #3b82f6 !important;
+            outline-offset: 2px !important;
+        }
+
+        /* Smooth scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-slate-100 via-emerald-50/30 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <div id="app" class="min-h-full flex flex-col max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+
+        <!-- TOP BAR / ACCESSIBILITY HEADER -->
+        <header class="py-4 mt-2 mb-4 glass-panel rounded-3xl px-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-emerald-600/30">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight">HAVEN</h1>
+                    <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">Daily Check-In & Safety</p>
+                </div>
+            </div>
+
+            <!-- Accessibility & View Controls -->
+            <div class="flex items-center gap-2">
+                <button id="voiceCheckInBtn" onclick="toggleVoiceRecognition()" title="Voice Check-in" class="h-12 px-4 rounded-2xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 flex items-center gap-2 transition-all text-sm active:scale-95">
+                    <i class="fa-solid fa-microphone text-emerald-600 dark:text-emerald-400 text-base" id="micIcon"></i>
+                    <span class="hidden sm:inline" id="micLabel">Voice Check-In</span>
+                </button>
+
+                <button onclick="toggleHighContrast()" title="Toggle High Contrast" class="h-12 w-12 rounded-2xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center justify-center transition-all active:scale-95">
+                    <i class="fa-solid fa-eye text-lg"></i>
+                </button>
+
+                <button onclick="toggleDarkMode()" title="Toggle Dark/Light Mode" class="h-12 w-12 rounded-2xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center justify-center transition-all active:scale-95">
+                    <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-amber-400 text-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 space-y-6">
+
+            <!-- TODAY STATUS HERO PANEL -->
+            <section class="glass-panel rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-lg border border-white/40 dark:border-white/10">
+                <!-- Date & Time Banner -->
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/80 text-xs sm:text-sm font-semibold mb-6">
+                    <i class="fa-regular fa-calendar-check text-emerald-600"></i>
+                    <span id="currentDateStr">Today</span> &bull; <span id="currentTimeStr">12:00 PM</span>
+                </div>
+
+                <!-- MAIN CHECK-IN BUTTON CONTAINER -->
+                <div class="my-4 flex flex-col items-center justify-center">
+                    <button id="mainCheckInBtn" onclick="performCheckIn()" class="relative group min-w-[260px] min-h-[260px] sm:w-72 sm:h-72 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-2xl shadow-emerald-500/40 flex flex-col items-center justify-center p-6 text-center transition-all duration-300 transform active:scale-95 hover:scale-102 focus:ring-8 focus:ring-emerald-300 dark:focus:ring-emerald-800 cursor-pointer">
+                        <!-- Pulse Ring when not checked in -->
+                        <div id="pulseRing" class="absolute inset-0 rounded-full bg-emerald-500 opacity-40 animate-pulse-ring pointer-events-none"></div>
+
+                        <i id="btnIcon" class="fa-solid fa-hand-holding-heart text-6xl sm:text-7xl mb-3 transition-transform group-hover:scale-110"></i>
+                        <span id="btnPrimaryText" class="text-3xl sm:text-4xl font-extrabold tracking-tight leading-none">I'M OKAY</span>
+                        <span id="btnSubText" class="text-xs sm:text-sm font-medium opacity-90 mt-2 px-4">Tap once to check in today</span>
+                    </button>
+                </div>
+
+                <!-- STREAK COUNTER AND RESET TOOL -->
+                <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+                    <div class="glass-card px-5 py-3 rounded-2xl flex items-center gap-3 border border-emerald-500/20">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-fire"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Current Streak</p>
+                            <p class="text-xl font-black text-slate-800 dark:text-slate-100" id="streakDisplay">0 Days</p>
+                        </div>
+                    </div>
+
+                    <div class="glass-card px-5 py-3 rounded-2xl flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Last Check-In</p>
+                            <p class="text-sm font-bold text-slate-800 dark:text-slate-100" id="lastCheckInTimeDisplay">Never</p>
+                        </div>
+                    </div>
+
+                    <button onclick="resetCheckInState()" class="px-4 py-3 rounded-2xl bg-slate-200/70 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Reset Demo
+                    </button>
+                </div>
+            </section>
+
+            <!-- ACTION GRID: HELP REQUEST & ESCALATION SIMULATOR -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- NEED A HAND? TASK REQUEST CARD -->
+                <section class="glass-panel rounded-3xl p-6 flex flex-col justify-between shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg">
+                                    <i class="fa-solid fa-hands-holding-child"></i>
+                                </div>
+                                <h2 class="text-xl font-bold">"Need a Hand?"</h2>
+                            </div>
+                            <span class="text-xs font-semibold px-3 py-1 bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 rounded-full">Volunteer Network</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                            Request simple non-emergency help from local verified buddies in your neighborhood.
+                        </p>
+                    </div>
+
+                    <button onclick="openHelpModal()" class="w-full h-16 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-sky-600/30 transition-all active:scale-98">
+                        <i class="fa-solid fa-circle-plus"></i> Request Small Task
+                    </button>
+                </section>
+
+                <!-- INTERACTIVE ESCALATION SIMULATOR CARD -->
+                <section class="glass-panel rounded-3xl p-6 flex flex-col justify-between shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
+                                    <i class="fa-solid fa-shield-cat"></i>
+                                </div>
+                                <h2 class="text-xl font-bold">Safety Simulator</h2>
+                            </div>
+                            <span class="text-xs font-semibold px-3 py-1 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded-full">Testing Tool</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                            Simulate what happens if a daily check-in is missed. Test gentle reminders, grace period timers, and Twilio SMS dispatch.
+                        </p>
+                    </div>
+
+                    <button onclick="startEscalationSimulation()" class="w-full h-16 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-amber-600/30 transition-all active:scale-98">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Simulate Missed Check-In
+                    </button>
+                </section>
+
+            </div>
+
+            <!-- TRUSTED CONTACTS MANAGEMENT SECTION -->
+            <section class="glass-panel rounded-3xl p-6 sm:p-8 shadow-md">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fa-solid fa-users text-emerald-600"></i> Trusted Contacts Circle
+                        </h2>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            People notified via SMS / call if you miss a check-in. Listed in order of escalation.
+                        </p>
+                    </div>
+                    <button onclick="openAddContactModal()" class="h-12 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all active:scale-95 text-sm">
+                        <i class="fa-solid fa-user-plus"></i> Add Trusted Contact
+                    </button>
+                </div>
+
+                <!-- Contacts List Container -->
+                <div id="contactsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Dynamic rendering here -->
+                </div>
+            </section>
+
+            <!-- SIMULATED SMS & REMINDER LOGS PANEL -->
+            <section class="glass-panel rounded-3xl p-6 sm:p-8 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-3">
+                        <i class="fa-solid fa-receipt text-blue-500"></i> Activity & Communication Logs
+                    </h2>
+                    <button onclick="clearLogs()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+                        Clear Logs
+                    </button>
+                </div>
+                <div id="activityLogs" class="space-y-3 max-h-60 overflow-y-auto pr-2 font-mono text-xs">
+                    <!-- Dynamic logs inserted here -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL 1: ADD / EDIT TRUSTED CONTACT -->
+    <div id="contactModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative border border-white/30 dark:border-white/10">
+            <button onclick="closeContactModal()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-300 transition-all">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="contactModalTitle" class="text-2xl font-bold mb-4">Add Trusted Contact</h3>
+            <form id="contactForm" onsubmit="saveContact(event)" class="space-y-4">
+                <input type="hidden" id="contactId">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Full Name</label>
+                    <input type="text" id="contactName" required placeholder="e.g. Sarah Jenkins" class="w-full h-14 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-base font-medium focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Relationship</label>
+                    <select id="contactRelation" class="w-full h-14 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-base font-medium focus:ring-2 focus:ring-emerald-500">
+                        <option value="Daughter">Daughter / Son</option>
+                        <option value="Neighbor">Next-door Neighbor</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Friend">Close Friend</option>
+                        <option value="Caregiver">Caregiver</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Phone Number (SMS Enabled)</label>
+                    <input type="tel" id="contactPhone" required placeholder="+1 (555) 019-2834" class="w-full h-14 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-base font-medium focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Priority Order</label>
+                    <select id="contactOrder" class="w-full h-14 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-base font-medium focus:ring-2 focus:ring-emerald-500">
+                        <option value="1">1st Contact (Primary)</option>
+                        <option value="2">2nd Contact (Secondary)</option>
+                        <option value="3">3rd Contact (Backup)</option>
+                    </select>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="closeContactModal()" class="flex-1 h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-300">Cancel</button>
+                    <button type="submit" class="flex-1 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/30">Save Contact</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: NEED A HAND? MICRO-TASK REQUEST -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-white/30 dark:border-white/10">
+            <button onclick="closeHelpModal()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-300 transition-all">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-2xl font-bold mb-2">Request Local Assistance</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Connect with nearby opt-in volunteer buddies for small everyday favors.</p>
+            
+            <form id="helpForm" onsubmit="submitHelpRequest(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Category of Need</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 cursor-pointer hover:border-sky-500">
+                            <input type="radio" name="helpType" value="Groceries" checked class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm font-semibold"><i class="fa-solid fa-basket-shopping text-sky-500 mr-1"></i> Groceries</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 cursor-pointer hover:border-sky-500">
+                            <input type="radio" name="helpType" value="Pharmacy Pickup" class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm font-semibold"><i class="fa-solid fa-prescription-bottle-medical text-sky-500 mr-1"></i> Pharmacy</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 cursor-pointer hover:border-sky-500">
+                            <input type="radio" name="helpType" value="Friendly Visit/Call" class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm font-semibold"><i class="fa-solid fa-mug-hot text-sky-500 mr-1"></i> Friendly Chat</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 cursor-pointer hover:border-sky-500">
+                            <input type="radio" name="helpType" value="Light Household Task" class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm font-semibold"><i class="fa-solid fa-screwdriver-wrench text-sky-500 mr-1"></i> Quick Fix</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Details (Optional)</label>
+                    <textarea id="helpDetails" rows="3" placeholder="e.g., Need milk and bread from the corner store, or someone to help carry up a parcel." class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-sky-500"></textarea>
+                </div>
+
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeHelpModal()" class="flex-1 h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-300">Cancel</button>
+                    <button type="submit" class="flex-1 h-14 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-lg shadow-sky-600/30">Broadcast Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: INTERACTIVE ESCALATION SIMULATION STEPPER -->
+    <div id="simModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-amber-500/30">
+            <button onclick="closeSimModal()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-300 transition-all">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-lg font-bold">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold">Escalation Sequence Demo</h3>
+                    <p class="text-xs text-amber-600 dark:text-amber-400 font-semibold">Live Protocol Simulator</p>
+                </div>
+            </div>
+
+            <!-- Steps visualization -->
+            <div id="simStepContainer" class="space-y-4 my-6">
+                <!-- Step 1 -->
+                <div id="simStep1" class="p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Step 1: Check-in Window Passed</span>
+                        <span id="simStep1Status" class="text-xs font-extrabold text-amber-500">Pending</span>
+                    </div>
+                    <p class="text-sm font-medium">9:00 AM deadline missed. User given 30-min grace buffer.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div id="simStep2" class="p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Step 2: Audio & Gentle Push Alert</span>
+                        <span id="simStep2Status" class="text-xs font-extrabold text-slate-400">Waiting...</span>
+                    </div>
+                    <p class="text-sm font-medium">Chime tone sounded on device + local gentle push notification.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div id="simStep3" class="p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 transition-all">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Step 3: Twilio SMS Dispatch</span>
+                        <span id="simStep3Status" class="text-xs font-extrabold text-slate-400">Waiting...</span>
+                    </div>
+                    <p class="text-sm font-medium">Alert SMS dispatched to trusted contact circle in priority order.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeSimModal()" class="w-full h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold hover:bg-slate-300">
+                    Close Simulation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM NOTIFICATION TOAST -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-32 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="glass-panel px-6 py-4 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-3 bg-white dark:bg-slate-900">
+            <div id="toastIcon" class="text-emerald-500 text-xl"><i class="fa-solid fa-circle-check"></i></div>
+            <div id="toastMessage" class="text-sm font-bold">Action Completed</div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // --- INITIAL STATE MANAGEMENT & PERSISTENCE ---
+        const DEFAULT_CONTACTS = [
+            { id: '1', name: 'Sarah Jenkins', relation: 'Daughter', phone: '+1 (555) 234-5678', order: 1 },
+            { id: '2', name: 'Marcus Vance', relation: 'Neighbor', phone: '+1 (555) 876-5432', order: 2 }
+        ];
+
+        let state = {
+            isCheckedIn: false,
+            lastCheckInTime: null,
+            streak: 3,
+            contacts: [],
+            logs: [],
+            isDarkMode: false,
+            isHighContrast: false
+        };
+
+        // --- WEB AUDIO API SYNTHESIZER ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Play pleasant chime for check-in success
+        function playSuccessTone() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+
+                // C5 to G5 major interval chime
+                osc1.frequency.setValueAtTime(523.25, now);
+                osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
+
+                osc2.frequency.setValueAtTime(659.25, now);
+                osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.6);
+                osc2.stop(now + 0.6);
+            } catch (e) {
+                console.log("Audio play blocked", e);
+            }
+        }
+
+        // Play alert warning tone for simulation
+        function playAlertTone() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.2);
+                osc.frequency.setValueAtTime(440, now + 0.4);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } catch (e) {
+                console.log("Audio play blocked", e);
+            }
+        }
+
+        // --- APP STORAGE & INITIALIZATION ---
+        function loadState() {
+            const saved = localStorage.getItem('haven_app_state');
+            if (saved) {
+                try {
+                    state = { ...state, ...JSON.parse(saved) };
+                } catch (e) {
+                    console.error("Failed to parse state", e);
+                }
+            } else {
+                state.contacts = DEFAULT_CONTACTS;
+            }
+
+            // Check if last check-in was today
+            if (state.lastCheckInTime) {
+                const lastDate = new Date(state.lastCheckInTime).toDateString();
+                const today = new Date().toDateString();
+                if (lastDate === today) {
+                    state.isCheckedIn = true;
+                } else {
+                    state.isCheckedIn = false;
+                }
+            }
+
+            // Apply Theme preferences
+            if (state.isDarkMode) document.documentElement.classList.add('dark');
+            if (state.isHighContrast) document.documentElement.classList.add('high-contrast');
+
+            renderAll();
+            addLog("System initialized. Haven ready.");
+        }
+
+        function saveState() {
+            localStorage.setItem('haven_app_state', JSON.stringify(state));
+            renderAll();
+        }
+
+        // --- RENDERING UI ---
+        function renderAll() {
+            renderTimeAndDate();
+            renderCheckInButton();
+            renderContacts();
+            renderLogs();
+        }
+
+        function renderTimeAndDate() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+            document.getElementById('currentDateStr').textContent = now.toLocaleDateString(undefined, dateOptions);
+            document.getElementById('currentTimeStr').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderCheckInButton() {
+            const btn = document.getElementById('mainCheckInBtn');
+            const icon = document.getElementById('btnIcon');
+            const primary = document.getElementById('btnPrimaryText');
+            const sub = document.getElementById('btnSubText');
+            const pulse = document.getElementById('pulseRing');
+            const streakDisp = document.getElementById('streakDisplay');
+            const lastTimeDisp = document.getElementById('lastCheckInTimeDisplay');
+
+            streakDisp.textContent = `${state.streak} Days`;
+
+            if (state.lastCheckInTime) {
+                const dt = new Date(state.lastCheckInTime);
+                lastTimeDisp.textContent = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                lastTimeDisp.textContent = 'Not yet today';
+            }
+
+            if (state.isCheckedIn) {
+                btn.className = "relative group min-w-[260px] min-h-[260px] sm:w-72 sm:h-72 rounded-full bg-slate-800 dark:bg-slate-900 border-4 border-emerald-500 text-emerald-400 shadow-xl flex flex-col items-center justify-center p-6 text-center transition-all duration-300";
+                icon.className = "fa-solid fa-circle-check text-6xl sm:text-7xl mb-3 text-emerald-400";
+                primary.textContent = "CHECKED IN";
+                sub.textContent = "You are safe for today!";
+                pulse.classList.add('hidden');
+            } else {
+                btn.className = "relative group min-w-[260px] min-h-[260px] sm:w-72 sm:h-72 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-2xl shadow-emerald-500/40 flex flex-col items-center justify-center p-6 text-center transition-all duration-300 transform active:scale-95 hover:scale-102 cursor-pointer";
+                icon.className = "fa-solid fa-hand-holding-heart text-6xl sm:text-7xl mb-3 transition-transform group-hover:scale-110";
+                primary.textContent = "I'M OKAY";
+                sub.textContent = "Tap once to check in today";
+                pulse.classList.remove('hidden');
+            }
+        }
+
+        function renderContacts() {
+            const container = document.getElementById('contactsList');
+            container.innerHTML = '';
+
+            // Sort by priority order
+            const sorted = [...state.contacts].sort((a, b) => a.order - b.order);
+
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="col-span-2 text-center py-6 text-slate-500 text-sm">No trusted contacts added yet. Click above to add family or neighbors.</div>`;
+                return;
+            }
+
+            sorted.forEach(c => {
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-2xl flex items-center justify-between border border-white/20 dark:border-white/10";
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl font-bold">
+                            #${c.order}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-base leading-tight">${escapeHtml(c.name)}</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(c.relation)} &bull; ${escapeHtml(c.phone)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="editContact('${c.id}')" title="Edit Contact" class="w-10 h-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteContact('${c.id}')" title="Remove Contact" class="w-10 h-10 rounded-xl hover:bg-red-100 dark:hover:bg-red-950/40 text-red-500 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('activityLogs');
+            container.innerHTML = '';
+            
+            if (state.logs.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 italic">No activity logged yet.</div>`;
+                return;
+            }
+
+            state.logs.slice().reverse().forEach(log => {
+                const item = document.createElement('div');
+                item.className = "flex items-start gap-2 text-slate-600 dark:text-slate-300 border-b border-slate-200/50 dark:border-slate-800/50 pb-1.5";
+                item.innerHTML = `
+                    <span class="text-slate-400 font-bold shrink-0">[${log.time}]</span>
+                    <span>${escapeHtml(log.msg)}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // --- CHECK-IN ACTIONS ---
+        function performCheckIn() {
+            if (state.isCheckedIn) {
+                showToast("Already checked in for today!");
+                return;
+            }
+
+            playSuccessTone();
+            state.isCheckedIn = true;
+            state.lastCheckInTime = new Date().toISOString();
+            state.streak += 1;
+
+            addLog(`CHECK-IN CONFIRMED: User checked in at ${new Date().toLocaleTimeString()}`);
+            saveState();
+            showToast("Checked in successfully! Have a great day.");
+        }
+
+        function resetCheckInState() {
+            state.isCheckedIn = false;
+            saveState();
+            addLog("Demo status reset to unchecked.");
+            showToast("Status reset for testing");
+        }
+
+        // --- CONTACTS CRUD ---
+        function openAddContactModal() {
+            document.getElementById('contactModalTitle').textContent = "Add Trusted Contact";
+            document.getElementById('contactForm').reset();
+            document.getElementById('contactId').value = '';
+            document.getElementById('contactModal').classList.remove('hidden');
+        }
+
+        function closeContactModal() {
+            document.getElementById('contactModal').classList.add('hidden');
+        }
+
+        function saveContact(e) {
+            e.preventDefault();
+            const id = document.getElementById('contactId').value;
+            const name = document.getElementById('contactName').value.trim();
+            const relation = document.getElementById('contactRelation').value;
+            const phone = document.getElementById('contactPhone').value.trim();
+            const order = parseInt(document.getElementById('contactOrder').value, 10);
+
+            if (!name || !phone) return;
+
+            if (id) {
+                // Update
+                const index = state.contacts.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    state.contacts[index] = { id, name, relation, phone, order };
+                    addLog(`Contact updated: ${name} (${relation})`);
+                }
+            } else {
+                // Create
+                const newContact = {
+                    id: Date.now().toString(),
+                    name, relation, phone, order
+                };
+                state.contacts.push(newContact);
+                addLog(`New trusted contact added: ${name}`);
+            }
+
+            saveState();
+            closeContactModal();
+            showToast("Contact saved successfully");
+        }
+
+        function editContact(id) {
+            const contact = state.contacts.find(c => c.id === id);
+            if (!contact) return;
+
+            document.getElementById('contactModalTitle').textContent = "Edit Contact";
+            document.getElementById('contactId').value = contact.id;
+            document.getElementById('contactName').value = contact.name;
+            document.getElementById('contactRelation').value = contact.relation;
+            document.getElementById('contactPhone').value = contact.phone;
+            document.getElementById('contactOrder').value = contact.order;
+
+            document.getElementById('contactModal').classList.remove('hidden');
+        }
+
+        function deleteContact(id) {
+            const contact = state.contacts.find(c => c.id === id);
+            if (!contact) return;
+
+            if (confirm(`Are you sure you want to remove ${contact.name} from your trusted contacts?`)) {
+                state.contacts = state.contacts.filter(c => c.id !== id);
+                addLog(`Contact removed: ${contact.name}`);
+                saveState();
+                showToast("Contact removed");
+            }
+        }
+
+        // --- HELP REQUEST TASK BOARD ---
+        function openHelpModal() {
+            document.getElementById('helpForm').reset();
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+        }
+
+        function submitHelpRequest(e) {
+            e.preventDefault();
+            const helpType = document.querySelector('input[name="helpType"]:checked').value;
+            const details = document.getElementById('helpDetails').value.trim();
+
+            addLog(`HELP REQUESTED: Category [${helpType}] - "${details || 'No additional details'}"`);
+            addLog(`BROADCAST SENT: 3 nearby volunteer buddies alerted via Haven Buddy Network.`);
+            
+            closeHelpModal();
+            showToast("Help request broadcast to nearby buddies!");
+        }
+
+        // --- ESCALATION SIMULATION STEPPER ---
+        function startEscalationSimulation() {
+            document.getElementById('simModal').classList.remove('hidden');
+
+            // Reset UI step indicators
+            const s1Status = document.getElementById('simStep1Status');
+            const s2Status = document.getElementById('simStep2Status');
+            const s3Status = document.getElementById('simStep3Status');
+
+            s1Status.textContent = "ACTIVE";
+            s1Status.className = "text-xs font-extrabold text-amber-500 animate-pulse";
+            s2Status.textContent = "Waiting...";
+            s2Status.className = "text-xs font-extrabold text-slate-400";
+            s3Status.textContent = "Waiting...";
+            s3Status.className = "text-xs font-extrabold text-slate-400";
+
+            addLog("ESCALATION SIMULATOR STARTED...");
+
+            // Step 2: Audio & Local Notification after 2 seconds
+            setTimeout(() => {
+                s1Status.textContent = "EXPIRED";
+                s1Status.className = "text-xs font-extrabold text-slate-400";
+
+                s2Status.textContent = "ALERTING";
+                s2Status.className = "text-xs font-extrabold text-amber-500 animate-pulse";
+                playAlertTone();
+                addLog("SIMULATION: Local device audio alarm sounded + Gentle Push notification displayed.");
+            }, 2000);
+
+            // Step 3: SMS Dispatch after 4.5 seconds
+            setTimeout(() => {
+                s2Status.textContent = "COMPLETED";
+                s2Status.className = "text-xs font-extrabold text-slate-400";
+
+                s3Status.textContent = "SMS DISPATCHED";
+                s3Status.className = "text-xs font-extrabold text-red-500";
+
+                const primary = state.contacts.find(c => c.order === 1) || state.contacts[0];
+                const contactName = primary ? primary.name : "Primary Contact";
+                const phone = primary ? primary.phone : "+1 (555) 019-2834";
+
+                addLog(`SIMULATION [TWILIO API]: SMS Alert dispatched to ${contactName} (${phone}) -> "HAVEN ALERT: User missed daily check-in. Please call/visit."`);
+                showToast("Simulated SMS alerts dispatched to contacts!");
+            }, 4500);
+        }
+
+        function closeSimModal() {
+            document.getElementById('simModal').classList.add('hidden');
+        }
+
+        // --- VOICE CHECK-IN (WEB SPEECH API) ---
+        let recognition = null;
+        let isListening = false;
+
+        function toggleVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                showToast("Voice recognition not supported on this browser.");
+                return;
+            }
+
+            if (isListening) {
+                stopVoiceRecognition();
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+
+            const micIcon = document.getElementById('micIcon');
+            const micLabel = document.getElementById('micLabel');
+
+            recognition.onstart = function() {
+                isListening = true;
+                micIcon.className = "fa-solid fa-microphone text-red-500 animate-bounce";
+                micLabel.textContent = "Listening... Say 'I'm Okay'";
+                showToast("Listening... Say 'I'm Okay'");
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                addLog(`VOICE RECOGNIZED: "${transcript}"`);
+
+                if (transcript.includes('okay') || transcript.includes('ok') || transcript.includes('check in') || transcript.includes('safe')) {
+                    performCheckIn();
+                } else {
+                    showToast(`Recognized: "${transcript}". Say "I'm Okay" to check in.`);
+                }
+                stopVoiceRecognition();
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech error", event.error);
+                stopVoiceRecognition();
+                showToast("Voice recognition error.");
+            };
+
+            recognition.onend = function() {
+                stopVoiceRecognition();
+            };
+
+            recognition.start();
+        }
+
+        function stopVoiceRecognition() {
+            isListening = false;
+            const micIcon = document.getElementById('micIcon');
+            const micLabel = document.getElementById('micLabel');
+            micIcon.className = "fa-solid fa-microphone text-emerald-600 dark:text-emerald-400";
+            micLabel.textContent = "Voice Check-In";
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+        }
+
+        // --- ACCESSIBILITY TOGGLES ---
+        function toggleDarkMode() {
+            state.isDarkMode = !state.isDarkMode;
+            if (state.isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            saveState();
+        }
+
+        function toggleHighContrast() {
+            state.isHighContrast = !state.isHighContrast;
+            if (state.isHighContrast) {
+                document.documentElement.classList.add('high-contrast');
+            } else {
+                document.documentElement.classList.remove('high-contrast');
+            }
+            saveState();
+        }
+
+        // --- LOGS & UTILS ---
+        function addLog(msg) {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            state.logs.push({ time: timeStr, msg });
+            if (state.logs.length > 30) state.logs.shift(); // keep last 30
+            renderLogs();
+        }
+
+        function clearLogs() {
+            state.logs = [];
+            renderLogs();
+            showToast("Logs cleared");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const messageEl = document.getElementById('toastMessage');
+            messageEl.textContent = msg;
+
+            toast.classList.remove('translate-y-32', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-32', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // --- CLOCK TICKER ---
+        setInterval(renderTimeAndDate, 10000);
+
+        // INITIALIZE ON LOAD
+        window.onload = function() {
+            loadState();
+        };
+    </script>
+</body>
+</html>
